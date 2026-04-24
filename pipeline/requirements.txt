@@ -1,0 +1,9 @@
+modal
+python-dotenv
+ffmpeg-python
+imagehash
+Pillow
+numpy
+anthropic
+deepgram-sdk==3.11.0
+httpx

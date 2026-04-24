@@ -1,0 +1,31 @@
+# env
+.env
+.env.local
+.env.*.local
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# test artifacts
+output*.json
+test_video.mp4
+*.mov
+*.webm
+
+# node / next
+web/node_modules/
+web/.next/
+web/.vercel/
+web/coverage/
+web/*.tsbuildinfo
+web/next-env.d.ts
+
+# claude code
+.claude/
+
+# mac
+.DS_Store
