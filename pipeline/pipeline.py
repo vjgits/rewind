@@ -5,9 +5,6 @@ import tempfile
 import subprocess
 from pathlib import Path
 
-# Local files are read in the local_entrypoint and passed as bytes to Modal,
-# since Modal containers run remotely and cannot access the host filesystem.
-
 app = modal.App("rewind-pipeline")
 
 image = (
@@ -21,6 +18,8 @@ image = (
         "anthropic",
         "deepgram-sdk==3.11.0",
         "httpx",
+        "supabase",
+        "fastapi",
     )
 )
 
@@ -32,7 +31,7 @@ api_secrets = modal.Secret.from_dotenv()
 # ---------------------------------------------------------------------------
 
 @app.function(image=image, timeout=600, memory=2048, secrets=[api_secrets])
-def extract_keyframes(video_url: str = "", video_bytes: bytes = b"") -> list[dict]:
+def extract_keyframes(video_url: str = "", video_bytes: bytes = b"") -> dict:
     import urllib.request
     import imagehash
     from PIL import Image
@@ -43,14 +42,12 @@ def extract_keyframes(video_url: str = "", video_bytes: bytes = b"") -> list[dic
         os.makedirs(frames_dir)
 
         if video_bytes:
-            print("Writing uploaded video bytes to disk...")
             with open(video_path, "wb") as f:
                 f.write(video_bytes)
         else:
             print("Downloading video...")
             urllib.request.urlretrieve(video_url, video_path)
 
-        # Validate duration before doing any expensive work
         probe = subprocess.run(
             [
                 "ffprobe", "-v", "error",
@@ -73,24 +70,21 @@ def extract_keyframes(video_url: str = "", video_bytes: bytes = b"") -> list[dic
             [
                 "ffmpeg", "-i", video_path,
                 "-vf", "fps=1",
-                "-q:v", "2",   # highest JPEG quality — helps vision model read small text
+                "-q:v", "2",
                 f"{frames_dir}/%04d.jpg",
             ],
             check=True,
             capture_output=True,
         )
 
-        # Build frame list with perceptual hashes
         frames = []
         for fname in sorted(os.listdir(frames_dir)):
             if not fname.endswith(".jpg"):
                 continue
-            # ffmpeg numbers from 0001, so subtract 1 for 0-indexed seconds
             timestamp = int(fname.replace(".jpg", "")) - 1
             path = os.path.join(frames_dir, fname)
             img = Image.open(path)
             w, h = img.size
-            # Crop center 80% before hashing to ignore webcam thumbnail noise
             crop_box = (int(w * 0.1), int(h * 0.1), int(w * 0.9), int(h * 0.9))
             frame_hash = imagehash.dhash(img.crop(crop_box), hash_size=8)
             frames.append({"timestamp": timestamp, "path": path, "hash": frame_hash})
@@ -100,8 +94,6 @@ def extract_keyframes(video_url: str = "", video_bytes: bytes = b"") -> list[dic
 
         print(f"Extracted {len(frames)} raw frames. Running dedup...")
 
-        # Collapse runs of perceptually identical frames.
-        # dhash diff > 10 = scene change; keep the first frame of each scene.
         scenes = []
         current_scene_start = 0
         prev_hash = frames[0]["hash"]
@@ -122,8 +114,7 @@ def extract_keyframes(video_url: str = "", video_bytes: bytes = b"") -> list[dic
             "scene_index": len(scenes),
         })
 
-        # Floor: guarantee at least one keyframe per 60 seconds even through
-        # slow scrolls that defeat the dedup threshold.
+        # Floor: guarantee at least one keyframe per 60 seconds
         existing_timestamps = {s["timestamp"] for s in scenes}
         last_ts = frames[-1]["timestamp"]
         for floor_ts in range(0, last_ts + 1, 60):
@@ -141,7 +132,6 @@ def extract_keyframes(video_url: str = "", video_bytes: bytes = b"") -> list[dic
         for i, s in enumerate(scenes):
             s["scene_index"] = i
 
-        # Hard cap — keeps Haiku cost bounded
         if len(scenes) > 80:
             step = len(scenes) // 80
             scenes = scenes[::step][:80]
@@ -150,17 +140,16 @@ def extract_keyframes(video_url: str = "", video_bytes: bytes = b"") -> list[dic
 
         print(f"Selected {len(scenes)} keyframes after dedup.")
 
-        # Read bytes now — they won't survive the tmpdir cleanup otherwise
-        result = []
+        result_keyframes = []
         for scene in scenes:
             with open(scene["path"], "rb") as f:
-                result.append({
+                result_keyframes.append({
                     "timestamp": scene["timestamp"],
                     "scene_index": scene["scene_index"],
                     "image_bytes": f.read(),
                 })
 
-        return result
+        return {"keyframes": result_keyframes, "duration_s": int(duration_seconds)}
 
 
 # ---------------------------------------------------------------------------
@@ -189,22 +178,11 @@ def transcribe_video(video_url: str = "", video_bytes: bytes = b"") -> dict:
 
     channel = response.results.channels[0].alternatives[0]
     words = [
-        {
-            "word": w.word,
-            "start": w.start,
-            "end": w.end,
-            "speaker": w.speaker,
-        }
+        {"word": w.word, "start": w.start, "end": w.end, "speaker": w.speaker}
         for w in channel.words
     ]
-
     utterances = [
-        {
-            "start": u.start,
-            "end": u.end,
-            "speaker": u.speaker,
-            "transcript": u.transcript,
-        }
+        {"start": u.start, "end": u.end, "speaker": u.speaker, "transcript": u.transcript}
         for u in response.results.utterances
     ]
 
@@ -213,7 +191,7 @@ def transcribe_video(video_url: str = "", video_bytes: bytes = b"") -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Step 2b: Describe each keyframe with Claude Haiku (run in parallel)
+# Step 2b: Describe each keyframe with Claude Haiku (parallel)
 # ---------------------------------------------------------------------------
 
 @app.function(image=image, timeout=60, secrets=[api_secrets], max_containers=5)
@@ -269,24 +247,17 @@ def describe_all_keyframes(keyframes: list[dict]) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Step 3: Align transcript utterances to the nearest preceding keyframe
+# Step 3: Align transcript utterances to nearest preceding keyframe
 # ---------------------------------------------------------------------------
 
 def align_transcript_to_keyframes(utterances: list[dict], keyframes: list[dict]) -> list[dict]:
     keyframe_times = [kf["timestamp"] for kf in keyframes]
     aligned = []
-
     for u in utterances:
-        # Latest keyframe that started at or before this utterance began
         applicable = [t for t in keyframe_times if t <= u["start"]]
         nearest_time = max(applicable) if applicable else keyframe_times[0]
         nearest_kf = next(kf for kf in keyframes if kf["timestamp"] == nearest_time)
-        aligned.append({
-            **u,
-            "keyframe_timestamp": nearest_kf["timestamp"],
-            "keyframe_scene_index": nearest_kf["scene_index"],
-        })
-
+        aligned.append({**u, "keyframe_timestamp": nearest_kf["timestamp"], "keyframe_scene_index": nearest_kf["scene_index"]})
     return aligned
 
 
@@ -299,7 +270,6 @@ def synthesize_summary(aligned_transcript: list[dict], keyframes: list[dict]) ->
     import anthropic
 
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-
     context_parts = []
     current_scene = -1
 
@@ -340,16 +310,90 @@ def synthesize_summary(aligned_transcript: list[dict], keyframes: list[dict]) ->
 
 
 # ---------------------------------------------------------------------------
-# Local entrypoint — run with: modal run pipeline.py --video <url>
+# Web endpoint: called by Next.js after upload; spawns pipeline asynchronously
+# ---------------------------------------------------------------------------
+
+@app.function(image=image, secrets=[api_secrets])
+@modal.fastapi_endpoint(method="POST")
+def trigger(payload: dict):
+    """Receives {analysis_id, video_url} and spawns the pipeline asynchronously."""
+    run_pipeline_job.spawn(
+        analysis_id=payload["analysis_id"],
+        video_url=payload["video_url"],
+    )
+    return {"status": "started", "analysis_id": payload["analysis_id"]}
+
+
+# ---------------------------------------------------------------------------
+# Main pipeline job: runs in Modal, updates Supabase throughout
+# ---------------------------------------------------------------------------
+
+@app.function(image=image, timeout=1800, secrets=[api_secrets])
+def run_pipeline_job(analysis_id: str, video_url: str):
+    from supabase import create_client as sb_create
+
+    sb = sb_create(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+
+    def set_status(status: str, **extra):
+        sb.table("analyses").update({"status": status, **extra}).eq("id", analysis_id).execute()
+
+    try:
+        set_status("extracting_frames")
+
+        # Parallel: extract keyframes + transcribe
+        kf_call = extract_keyframes.spawn(video_url=video_url)
+        tr_call = transcribe_video.spawn(video_url=video_url)
+
+        kf_result = kf_call.get()
+        keyframes = kf_result["keyframes"]
+        duration_s = kf_result["duration_s"]
+
+        transcript = tr_call.get()
+
+        set_status("analyzing_screens", duration_s=duration_s)
+
+        # Describe keyframes with Claude Haiku
+        keyframes_with_descriptions = describe_all_keyframes.remote(keyframes)
+
+        # Upload each keyframe image to Supabase Storage + save DB record
+        for kf in keyframes_with_descriptions:
+            image_path = f"{analysis_id}/{kf['timestamp']}.jpg"
+            sb.storage.from_("keyframes").upload(
+                image_path,
+                kf["image_bytes"],
+                {"content-type": "image/jpeg", "upsert": "true"},
+            )
+            sb.table("keyframes").insert({
+                "analysis_id": analysis_id,
+                "timestamp_s": kf["timestamp"],
+                "image_path": image_path,
+                "description": kf["description"],
+            }).execute()
+
+        set_status("synthesizing")
+
+        aligned = align_transcript_to_keyframes(transcript["utterances"], keyframes_with_descriptions)
+        summary = synthesize_summary.remote(aligned, keyframes_with_descriptions)
+
+        set_status("complete", summary=summary)
+        print(f"Done — analysis {analysis_id} complete.")
+
+    except Exception as e:
+        sb.table("analyses").update({
+            "status": "error",
+            "error_message": str(e)[:500],
+        }).eq("id", analysis_id).execute()
+        raise
+
+
+# ---------------------------------------------------------------------------
+# Local entrypoint — for CLI testing: modal run pipeline.py --video <path>
 # ---------------------------------------------------------------------------
 
 @app.local_entrypoint()
 def main(video: str, output: str = "output.json"):
-    print(f"\n=== Rewind Pipeline ===")
-    print(f"Input: {video}\n")
+    print(f"\n=== Rewind Pipeline ===\nInput: {video}\n")
 
-    # Detect local file vs URL. Modal runs remotely so we read local files
-    # here (in the local_entrypoint) and pass bytes to the remote functions.
     is_local = not video.startswith("http://") and not video.startswith("https://")
     video_bytes = b""
     if is_local:
@@ -358,18 +402,17 @@ def main(video: str, output: str = "output.json"):
             raise FileNotFoundError(f"File not found: {local_path}")
         size_mb = local_path.stat().st_size / 1_000_000
         print(f"Local file: {local_path.name} ({size_mb:.0f} MB)")
-        print("Reading file into memory to transfer to Modal...")
         video_bytes = local_path.read_bytes()
         video_url = ""
     else:
         video_url = video
 
-    # Frame extraction and transcription run in parallel — biggest time saver
-    print("\n[1/4] Extracting keyframes + transcribing (parallel)...")
+    print("[1/4] Extracting keyframes + transcribing (parallel)...")
     keyframes_call = extract_keyframes.spawn(video_url=video_url, video_bytes=video_bytes)
     transcript_call = transcribe_video.spawn(video_url=video_url, video_bytes=video_bytes)
 
-    keyframes = keyframes_call.get()
+    kf_result = keyframes_call.get()
+    keyframes = kf_result["keyframes"]
     transcript = transcript_call.get()
 
     print(f"      {len(keyframes)} keyframes, {len(transcript['utterances'])} utterances\n")
@@ -383,7 +426,6 @@ def main(video: str, output: str = "output.json"):
     print("[4/4] Synthesizing narrative summary with Claude Sonnet...")
     summary = synthesize_summary.remote(aligned, keyframes_with_descriptions)
 
-    # Strip binary image_bytes before serializing — not useful in JSON output
     serializable_keyframes = [
         {k: v for k, v in kf.items() if k != "image_bytes"}
         for kf in keyframes_with_descriptions
@@ -398,8 +440,6 @@ def main(video: str, output: str = "output.json"):
 
     output_path = Path(output)
     output_path.write_text(json.dumps(result, indent=2))
-
     print(f"\nDone. Output written to: {output_path.resolve()}")
     print(f"Keyframes: {len(serializable_keyframes)}")
-    print(f"Utterances: {len(transcript['utterances'])}")
     print(f"\n--- Summary preview ---\n{summary[:600]}\n...")
