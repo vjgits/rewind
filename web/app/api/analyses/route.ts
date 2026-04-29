@@ -10,6 +10,18 @@ export async function POST(request: Request) {
   const { filename } = await request.json()
   if (!filename) return NextResponse.json({ error: 'filename required' }, { status: 400 })
 
+  // Global cap — keeps costs bounded during open beta
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+  const { count } = await admin
+    .from('analyses')
+    .select('*', { count: 'exact', head: true })
+  if ((count ?? 0) >= 1000) {
+    return NextResponse.json({ error: 'ANALYSIS_CAP_REACHED' }, { status: 429 })
+  }
+
   const { data: analysis, error: insertError } = await supabase
     .from('analyses')
     .insert({ user_id: user.id, video_filename: filename })
@@ -21,11 +33,6 @@ export async function POST(request: Request) {
   }
 
   const videoPath = `${user.id}/${analysis.id}/${filename}`
-
-  const admin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
 
   const { data: uploadData, error: urlError } = await admin.storage
     .from('videos')

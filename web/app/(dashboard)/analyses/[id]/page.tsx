@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 type Keyframe = {
   id: string
@@ -33,7 +35,6 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 const TERMINAL = new Set(['complete', 'error'])
-
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 
 function keyframeImageUrl(imagePath: string) {
@@ -46,28 +47,19 @@ function formatTime(s: number) {
   return m > 0 ? `${m}m ${sec}s` : `${sec}s`
 }
 
-// Parse citation spans like [42s] and [screen@67s] from summary text
-function renderSummaryWithCitations(
-  summary: string,
-  onCitationClick: (timestampS: number) => void
-) {
-  const parts = summary.split(/(\[(?:screen@)?\d+s\])/g)
-  return parts.map((part, i) => {
-    const match = part.match(/\[(?:screen@)?(\d+)s\]/)
-    if (match) {
-      const ts = parseInt(match[1])
-      return (
-        <button
-          key={i}
-          onClick={() => onCitationClick(ts)}
-          className="inline text-indigo-400 hover:text-indigo-300 font-mono text-sm underline underline-offset-2 decoration-dotted"
-        >
-          {part}
-        </button>
-      )
-    }
-    return <span key={i}>{part}</span>
-  })
+function stripMarkdown(text: string) {
+  return text
+    .replace(/^#+\s*/, '')
+    .replace(/\*+([^*]+)\*+/g, '$1')
+    .trim()
+}
+
+// Protect citation spans [42s] / [screen@67s] from the markdown parser
+// by converting them to code spans react-markdown won't interfere with.
+function protectCitations(text: string) {
+  return text.replace(/\[(screen@)?(\d+)s\]/g, (_, prefix, ts) =>
+    `\`CITE:${prefix ? 'screen_' : ''}${ts}\``
+  )
 }
 
 export default function AnalysisPage() {
@@ -91,9 +83,7 @@ export default function AnalysisPage() {
         if (!cancelled) {
           setAnalysis(data)
           setLoading(false)
-          if (!TERMINAL.has(data.status)) {
-            setTimeout(poll, 3000)
-          }
+          if (!TERMINAL.has(data.status)) setTimeout(poll, 3000)
         }
       } catch {
         if (!cancelled) setTimeout(poll, 5000)
@@ -106,15 +96,42 @@ export default function AnalysisPage() {
 
   function scrollToKeyframe(timestampS: number) {
     if (!analysis) return
-    // Find the nearest keyframe at or before this timestamp
     const kfs = [...analysis.keyframes].sort((a, b) => a.timestamp_s - b.timestamp_s)
-    const nearest = kfs.reduce((best, kf) =>
-      kf.timestamp_s <= timestampS ? kf : best
-    , kfs[0])
+    const nearest = kfs.reduce((best, kf) => kf.timestamp_s <= timestampS ? kf : best, kfs[0])
     if (!nearest) return
-    const el = frameRefs.current[nearest.timestamp_s]
-    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+    frameRefs.current[nearest.timestamp_s]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
   }
+
+  // Markdown components — defined with useMemo so scrollToKeyframe is captured correctly
+  const mdComponents = useMemo(() => ({
+    p({ children }: { children: React.ReactNode }) {
+      return <p className="text-gray-200 leading-relaxed mb-4">{children}</p>
+    },
+    strong({ children }: { children: React.ReactNode }) {
+      return <strong className="text-white font-semibold">{children}</strong>
+    },
+    em({ children }: { children: React.ReactNode }) {
+      return <em className="text-gray-300 italic">{children}</em>
+    },
+    code({ children }: { children: React.ReactNode }) {
+      const text = String(children)
+      const m = text.match(/^CITE:(screen_)?(\d+)$/)
+      if (m) {
+        const ts = parseInt(m[2])
+        const label = m[1] ? `[screen@${ts}s]` : `[${ts}s]`
+        return (
+          <button
+            onClick={() => scrollToKeyframe(ts)}
+            className="inline text-indigo-400 hover:text-indigo-300 font-mono text-sm underline underline-offset-2 decoration-dotted"
+          >
+            {label}
+          </button>
+        )
+      }
+      return <code className="bg-gray-800 px-1 rounded text-sm">{children}</code>
+    },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [analysis])
 
   if (loading) {
     return (
@@ -127,7 +144,16 @@ export default function AnalysisPage() {
   if (!analysis) return null
 
   const isProcessing = !TERMINAL.has(analysis.status)
-  const tldr = analysis.summary?.split('\n').find(l => l.trim().length > 0) ?? ''
+
+  const rawTldr = analysis.summary?.split('\n').find(l => l.trim().length > 0) ?? ''
+  const tldr = stripMarkdown(rawTldr)
+
+  const summaryBody = analysis.summary
+    ? analysis.summary
+        .split('\n')
+        .filter(line => line.trim() !== '---')
+        .join('\n')
+    : null
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -142,7 +168,6 @@ export default function AnalysisPage() {
 
       <main className="max-w-4xl mx-auto px-6 py-10">
 
-        {/* Processing state */}
         {isProcessing && (
           <div className="flex items-center gap-3 mb-8 px-4 py-3 bg-gray-900 border border-gray-800 rounded-lg">
             <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
@@ -150,14 +175,12 @@ export default function AnalysisPage() {
           </div>
         )}
 
-        {/* Error state */}
         {analysis.status === 'error' && (
           <div className="mb-8 px-4 py-3 bg-red-950 border border-red-800 rounded-lg text-sm text-red-300">
             Processing failed: {analysis.error_message ?? 'Unknown error'}
           </div>
         )}
 
-        {/* TL;DR banner */}
         {tldr && (
           <div className="mb-8 px-5 py-4 bg-indigo-950 border border-indigo-800 rounded-xl">
             <p className="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-1">TL;DR</p>
@@ -165,19 +188,18 @@ export default function AnalysisPage() {
           </div>
         )}
 
-        {/* Keyframe strip */}
         {analysis.keyframes.length > 0 && (
           <div className="mb-10">
             <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Keyframes</h2>
             <div
               ref={stripRef}
-              className="flex gap-3 overflow-x-auto pb-3 scrollbar-thin scrollbar-thumb-gray-700"
+              className="flex gap-3 overflow-x-auto pb-3"
             >
               {analysis.keyframes.map((kf) => (
                 <div
                   key={kf.id}
                   ref={(el) => { frameRefs.current[kf.timestamp_s] = el }}
-                  className="flex-none w-48 cursor-default"
+                  className="flex-none w-48"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -196,17 +218,15 @@ export default function AnalysisPage() {
           </div>
         )}
 
-        {/* Full summary */}
-        {analysis.summary && (
+        {summaryBody && (
           <div>
             <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Summary</h2>
-            <div className="prose prose-invert prose-sm max-w-none">
-              {analysis.summary.split('\n\n').map((para, i) => (
-                <p key={i} className="text-gray-200 leading-relaxed mb-4">
-                  {renderSummaryWithCitations(para, scrollToKeyframe)}
-                </p>
-              ))}
-            </div>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={mdComponents}
+            >
+              {protectCitations(summaryBody)}
+            </ReactMarkdown>
           </div>
         )}
 
