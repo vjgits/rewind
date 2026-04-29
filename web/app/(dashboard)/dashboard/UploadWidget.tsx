@@ -123,11 +123,11 @@ export default function UploadWidget() {
   if (stage === 'cap') {
     return (
       <div className="border border-gray-700 rounded-xl px-8 py-12 text-center">
-        <p className="text-white font-medium mb-2">Rewind is at capacity</p>
+        <p className="text-white font-medium mb-2">Reewind is at capacity</p>
         <p className="text-gray-400 text-sm">
           We&apos;ve hit our analysis limit during the beta.{' '}
           <a
-            href="mailto:vijay.suresh11@gmail.com?subject=Rewind waitlist"
+            href="mailto:vijay.suresh11@gmail.com?subject=Reewind waitlist"
             className="text-indigo-400 hover:text-indigo-300 underline"
           >
             Join the waitlist

@@ -60,7 +60,7 @@ export default function SignupPage() {
     <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold text-white tracking-tight">Rewind</h1>
+          <h1 className="text-2xl font-semibold text-white tracking-tight">Reewind</h1>
           <p className="mt-1 text-sm text-gray-400">Create your account</p>
         </div>
 
