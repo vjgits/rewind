@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   const { count } = await admin
     .from('analyses')
     .select('*', { count: 'exact', head: true })
-  if ((count ?? 0) >= 1000) {
+  if ((count ?? 0) >= 100) {
     return NextResponse.json({ error: 'ANALYSIS_CAP_REACHED' }, { status: 429 })
   }
 
