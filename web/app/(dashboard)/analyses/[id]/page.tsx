@@ -104,16 +104,16 @@ export default function AnalysisPage() {
 
   // Markdown components — defined with useMemo so scrollToKeyframe is captured correctly
   const mdComponents = useMemo(() => ({
-    p({ children }: { children: React.ReactNode }) {
+    p({ children }: { children?: React.ReactNode }) {
       return <p className="text-gray-200 leading-relaxed mb-4">{children}</p>
     },
-    strong({ children }: { children: React.ReactNode }) {
+    strong({ children }: { children?: React.ReactNode }) {
       return <strong className="text-white font-semibold">{children}</strong>
     },
-    em({ children }: { children: React.ReactNode }) {
+    em({ children }: { children?: React.ReactNode }) {
       return <em className="text-gray-300 italic">{children}</em>
     },
-    code({ children }: { children: React.ReactNode }) {
+    code({ children }: { children?: React.ReactNode }) {
       const text = String(children)
       const m = text.match(/^CITE:(screen_)?(\d+)$/)
       if (m) {

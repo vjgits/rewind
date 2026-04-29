@@ -2,7 +2,6 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/utils/supabase/client'
 
 type Stage = 'idle' | 'uploading' | 'triggering' | 'done' | 'error' | 'cap'
 
@@ -79,16 +78,20 @@ export default function UploadWidget() {
       }
       if (!createRes.ok) throw new Error(createJson.error ?? 'Failed to create analysis')
 
-      const { analysisId, uploadPath, uploadToken } = createJson
+      const { analysisId, signedUrl } = createJson
 
-      // 2. Upload directly to Supabase Storage via signed URL
-      const supabase = createClient()
-      const { error: uploadError } = await supabase.storage
-        .from('videos')
-        .uploadToSignedUrl(uploadPath, uploadToken, file, {
-          onUploadProgress: (e) => setProgress(Math.round((e.loaded / e.total) * 100)),
-        })
-      if (uploadError) throw new Error(uploadError.message)
+      // 2. Upload directly to Supabase Storage via XHR for progress tracking
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100))
+        }
+        xhr.onload = () => xhr.status < 300 ? resolve() : reject(new Error(`Upload failed (${xhr.status})`))
+        xhr.onerror = () => reject(new Error('Upload failed'))
+        xhr.open('PUT', signedUrl)
+        xhr.setRequestHeader('Content-Type', file.type || 'video/mp4')
+        xhr.send(file)
+      })
 
       // 3. Trigger Modal pipeline
       setStage('triggering')
