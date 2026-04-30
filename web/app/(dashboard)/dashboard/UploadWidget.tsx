@@ -7,7 +7,7 @@ type Stage = 'idle' | 'uploading' | 'triggering' | 'done' | 'error' | 'cap'
 
 const ACCEPTED = '.mp4,.mov,.webm,.mkv'
 const MAX_BYTES = 2 * 1024 * 1024 * 1024  // 2 GB
-const MAX_DURATION_S = 90 * 60             // 90 min
+const MAX_DURATION_S = 30 * 60             // 30 min
 const SUPPORTED_TYPES = new Set(['video/mp4', 'video/quicktime', 'video/webm', 'video/x-matroska', 'video/mkv'])
 
 function getVideoDuration(file: File): Promise<number> {
@@ -51,7 +51,7 @@ export default function UploadWidget() {
       const duration = await getVideoDuration(file)
       if (duration > MAX_DURATION_S) {
         const mins = Math.round(duration / 60)
-        setErrorMsg(`Video is ${mins} min — maximum supported length is 90 minutes.`)
+        setErrorMsg(`Video is ${mins} min — maximum supported length is 30 minutes.`)
         setStage('error')
         return
       }
@@ -175,7 +175,7 @@ export default function UploadWidget() {
               </svg>
             </div>
             <p className="text-white font-medium mb-1">Drop a recording here</p>
-            <p className="text-gray-400 text-sm">MP4, MOV, WEBM · max 90 min · max 2 GB</p>
+            <p className="text-gray-400 text-sm">MP4, MOV, WEBM · max 30 min · max 2 GB</p>
           </>
         )}
 

@@ -68,7 +68,7 @@ export default async function DashboardPage() {
             </div>
             <div>
               <p className="text-sm font-semibold text-white mb-0.5">What you give</p>
-              <p className="text-sm text-gray-400">Upload a recording that has screenshare.</p>
+              <p className="text-sm text-gray-400">Upload a recording that has screenshare (MP4, MOV, WEBM · max 30 min).</p>
             </div>
           </div>
           <div className="flex gap-4 items-start p-4 bg-gray-900 border border-gray-800 rounded-xl">

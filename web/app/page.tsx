@@ -146,7 +146,7 @@ export default async function Home() {
         </div>
 
         <p style={{ marginTop: '24px', fontSize: '11px', color: '#374151' }}>
-          Supports MP4, MOV, WEBM · up to 90 min · 2 GB
+          Supports MP4, MOV, WEBM · up to 30 min · 2 GB
         </p>
       </div>
     </div>
