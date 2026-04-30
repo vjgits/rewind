@@ -4,15 +4,34 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/client'
 
+function validatePassword(pw: string): string {
+  if (pw.length < 8)           return 'Password must be at least 8 characters.'
+  if (!/[A-Z]/.test(pw))      return 'Password must contain at least one uppercase letter.'
+  if (!/[0-9]/.test(pw))      return 'Password must contain at least one number.'
+  if (!/[^A-Za-z0-9]/.test(pw)) return 'Password must contain at least one special character.'
+  return ''
+}
+
 export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [pwError, setPwError] = useState('')
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
 
+  function onPasswordChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value
+    setPassword(val)
+    if (val) setPwError(validatePassword(val))
+    else setPwError('')
+  }
+
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
+    const pwMsg = validatePassword(password)
+    if (pwMsg) { setPwError(pwMsg); return }
+
     setError('')
     setLoading(true)
 
@@ -56,6 +75,13 @@ export default function SignupPage() {
     )
   }
 
+  const requirements = [
+    { label: '8+ characters',      met: password.length >= 8 },
+    { label: 'Uppercase letter',   met: /[A-Z]/.test(password) },
+    { label: 'Number',             met: /[0-9]/.test(password) },
+    { label: 'Special character',  met: /[^A-Za-z0-9]/.test(password) },
+  ]
+
   return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
@@ -89,13 +115,30 @@ export default function SignupPage() {
               id="password"
               type="password"
               required
-              minLength={6}
               autoComplete="new-password"
               value={password}
-              onChange={e => setPassword(e.target.value)}
+              onChange={onPasswordChange}
               className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
-              placeholder="Min. 6 characters"
+              placeholder="Create a strong password"
             />
+
+            {/* Live requirements checklist */}
+            {password.length > 0 && (
+              <ul className="mt-2 space-y-1">
+                {requirements.map(r => (
+                  <li key={r.label} className="flex items-center gap-1.5 text-xs">
+                    <span className={r.met ? 'text-green-400' : 'text-gray-500'}>
+                      {r.met ? '✓' : '○'}
+                    </span>
+                    <span className={r.met ? 'text-green-400' : 'text-gray-500'}>{r.label}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {pwError && !password.length && (
+              <p className="mt-1.5 text-xs text-red-400">{pwError}</p>
+            )}
           </div>
 
           {error && (
