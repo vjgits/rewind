@@ -71,16 +71,35 @@ export default async function DashboardPage() {
               <p className="text-sm text-gray-400">Upload a recording that has screenshare (MP4, MOV, WEBM · max 30 min).</p>
             </div>
           </div>
-          <div className="flex gap-4 items-start p-4 bg-gray-900 border border-gray-800 rounded-xl">
-            <div className="flex-none w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
-              2
+          <div className="p-4 bg-gray-900 border border-gray-800 rounded-xl">
+            <div className="flex gap-4 items-center mb-3">
+              <div className="flex-none w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold shrink-0">
+                2
+              </div>
+              <p className="text-sm font-semibold text-white">What you get</p>
             </div>
-            <div>
-              <p className="text-sm font-semibold text-white mb-0.5">What you get</p>
-              <p className="text-sm text-gray-400">
-                Screen captures, a full transcript, and a narrative summary that gives you the full picture —
-                connecting what was said and what was shown.
-              </p>
+            <div className="flex flex-col gap-3 pl-11">
+              <div className="flex gap-3 items-start">
+                <span className="text-base shrink-0 mt-0.5">🖼️</span>
+                <div>
+                  <p className="text-xs font-semibold text-gray-200">Screen captures</p>
+                  <p className="text-xs text-gray-500 leading-relaxed">Key moments extracted automatically from your recording.</p>
+                </div>
+              </div>
+              <div className="flex gap-3 items-start">
+                <span className="text-base shrink-0 mt-0.5">📝</span>
+                <div>
+                  <p className="text-xs font-semibold text-gray-200">Full transcript</p>
+                  <p className="text-xs text-gray-500 leading-relaxed">Every word spoken, timestamped and searchable.</p>
+                </div>
+              </div>
+              <div className="flex gap-3 items-start">
+                <span className="text-base shrink-0 mt-0.5">✨</span>
+                <div>
+                  <p className="text-xs font-semibold text-gray-200">Narrative summary</p>
+                  <p className="text-xs text-gray-500 leading-relaxed">Connects what was shown on screen with what was said — the full picture.</p>
+                </div>
+              </div>
             </div>
           </div>
         </section>

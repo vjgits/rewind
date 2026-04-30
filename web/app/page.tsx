@@ -88,21 +88,39 @@ export default async function Home() {
           </div>
 
           <div style={{
-            display: 'flex', gap: '16px', alignItems: 'flex-start',
             padding: '16px', borderRadius: '12px',
             background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
           }}>
-            <div style={{
-              flexShrink: 0, width: '28px', height: '28px', borderRadius: '9999px',
-              background: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '12px', fontWeight: 700, color: '#fff',
-            }}>2</div>
-            <div>
-              <p style={{ fontSize: '13px', fontWeight: 600, color: '#fff', marginBottom: '2px' }}>What you get</p>
-              <p style={{ fontSize: '13px', color: '#9ca3af', lineHeight: 1.5 }}>
-                Screen captures, a full transcript, and a narrative summary that gives you the full picture —
-                connecting what was said and what was shown.
-              </p>
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', marginBottom: '14px' }}>
+              <div style={{
+                flexShrink: 0, width: '28px', height: '28px', borderRadius: '9999px',
+                background: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '12px', fontWeight: 700, color: '#fff',
+              }}>2</div>
+              <p style={{ fontSize: '13px', fontWeight: 600, color: '#fff', paddingTop: '5px' }}>What you get</p>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingLeft: '44px' }}>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '16px', flexShrink: 0, marginTop: '1px' }}>🖼️</span>
+                <div>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#e5e7eb', marginBottom: '1px' }}>Screen captures</p>
+                  <p style={{ fontSize: '12px', color: '#6b7280', lineHeight: 1.5 }}>Key moments extracted automatically from your recording.</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '16px', flexShrink: 0, marginTop: '1px' }}>📝</span>
+                <div>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#e5e7eb', marginBottom: '1px' }}>Full transcript</p>
+                  <p style={{ fontSize: '12px', color: '#6b7280', lineHeight: 1.5 }}>Every word spoken, timestamped and searchable.</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '16px', flexShrink: 0, marginTop: '1px' }}>✨</span>
+                <div>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#e5e7eb', marginBottom: '1px' }}>Narrative summary</p>
+                  <p style={{ fontSize: '12px', color: '#6b7280', lineHeight: 1.5 }}>Connects what was shown on screen with what was said — the full picture.</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
