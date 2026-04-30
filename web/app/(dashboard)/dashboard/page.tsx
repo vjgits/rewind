@@ -37,7 +37,7 @@ export default async function DashboardPage() {
 
   const { data: analyses } = await supabase
     .from('analyses')
-    .select('id, video_filename, status, created_at, duration_s, attempt_count')
+    .select('id, video_filename, status, created_at, duration_s')
     .order('created_at', { ascending: false })
 
   const count = analyses?.length ?? 0
@@ -129,9 +129,7 @@ export default async function DashboardPage() {
 
               <ul className="divide-y divide-gray-800/60">
                 {analyses!.map((a) => {
-                  const canResubmit =
-                    (a.status === 'error' || a.status === 'pending') &&
-                    (a.attempt_count ?? 0) < 3
+                  const canResubmit = a.status === 'error' || a.status === 'pending'
 
                   return (
                     <li

@@ -6,61 +6,138 @@ export default async function Home() {
   const { data: { user } } = await supabase.auth.getUser()
 
   return (
-    <div className="relative min-h-screen bg-gray-950 text-white overflow-hidden flex flex-col items-center justify-center px-4">
+    <div className="relative min-h-screen bg-gray-950 text-white overflow-hidden flex flex-col items-center justify-center px-4 py-16">
 
       {/* Mesh gradient orbs */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-indigo-600/20 blur-3xl" />
-        <div className="absolute top-1/4 -right-32 w-[500px] h-[500px] rounded-full bg-violet-600/20 blur-3xl" />
-        <div className="absolute bottom-0 left-1/3 w-[500px] h-[500px] rounded-full bg-blue-600/15 blur-3xl" />
+      <div
+        aria-hidden
+        style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}
+      >
+        <div style={{
+          position: 'absolute', top: '-160px', left: '-160px',
+          width: '600px', height: '600px', borderRadius: '9999px',
+          background: 'radial-gradient(circle, rgba(99,102,241,0.25) 0%, transparent 70%)',
+        }} />
+        <div style={{
+          position: 'absolute', top: '25%', right: '-128px',
+          width: '500px', height: '500px', borderRadius: '9999px',
+          background: 'radial-gradient(circle, rgba(139,92,246,0.2) 0%, transparent 70%)',
+        }} />
+        <div style={{
+          position: 'absolute', bottom: '0', left: '33%',
+          width: '500px', height: '500px', borderRadius: '9999px',
+          background: 'radial-gradient(circle, rgba(59,130,246,0.15) 0%, transparent 70%)',
+        }} />
       </div>
 
-      {/* Dot grid overlay */}
+      {/* Dot grid */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.15]"
+        aria-hidden
         style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.12,
           backgroundImage: 'radial-gradient(circle, #6366f1 1px, transparent 1px)',
           backgroundSize: '32px 32px',
         }}
       />
 
       {/* Content */}
-      <div className="relative z-10 text-center max-w-2xl">
-        <div className="inline-flex items-center gap-2 mb-6 px-3 py-1 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs font-medium tracking-wide uppercase">
+      <div style={{ position: 'relative', zIndex: 10, textAlign: 'center', maxWidth: '640px', width: '100%' }}>
+
+        {/* Beta badge */}
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: '6px',
+          marginBottom: '24px', padding: '4px 12px', borderRadius: '9999px',
+          border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.1)',
+          color: '#a5b4fc', fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase',
+        }}>
           Beta
         </div>
 
-        <h1 className="text-6xl sm:text-7xl font-bold tracking-tight mb-4 bg-gradient-to-b from-white to-gray-400 bg-clip-text text-transparent">
+        {/* Title */}
+        <h1 style={{
+          fontSize: 'clamp(48px, 8vw, 72px)', fontWeight: 700, letterSpacing: '-0.03em',
+          marginBottom: '12px', lineHeight: 1.1,
+          background: 'linear-gradient(180deg, #ffffff 0%, #9ca3af 100%)',
+          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+        }}>
           Reewind
         </h1>
 
-        <p className="text-2xl sm:text-3xl font-medium text-indigo-300 mb-5">
+        {/* Tagline */}
+        <p style={{ fontSize: '22px', fontWeight: 500, color: '#818cf8', marginBottom: '40px' }}>
           See what was said.
         </p>
 
-        <p className="text-gray-400 text-base sm:text-lg leading-relaxed mb-10 max-w-lg mx-auto">
-          Upload a video call. Get screen captures, a full transcript, and a narrative summary that connects what was shown with what was said.
-        </p>
+        {/* Steps */}
+        <div style={{ textAlign: 'left', marginBottom: '40px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{
+            display: 'flex', gap: '16px', alignItems: 'flex-start',
+            padding: '16px', borderRadius: '12px',
+            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+          }}>
+            <div style={{
+              flexShrink: 0, width: '28px', height: '28px', borderRadius: '9999px',
+              background: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '12px', fontWeight: 700, color: '#fff',
+            }}>1</div>
+            <div>
+              <p style={{ fontSize: '13px', fontWeight: 600, color: '#fff', marginBottom: '2px' }}>What you give</p>
+              <p style={{ fontSize: '13px', color: '#9ca3af', lineHeight: 1.5 }}>Upload a recording that has screenshare.</p>
+            </div>
+          </div>
 
-        <div className="flex gap-3 justify-center flex-wrap">
+          <div style={{
+            display: 'flex', gap: '16px', alignItems: 'flex-start',
+            padding: '16px', borderRadius: '12px',
+            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+          }}>
+            <div style={{
+              flexShrink: 0, width: '28px', height: '28px', borderRadius: '9999px',
+              background: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '12px', fontWeight: 700, color: '#fff',
+            }}>2</div>
+            <div>
+              <p style={{ fontSize: '13px', fontWeight: 600, color: '#fff', marginBottom: '2px' }}>What you get</p>
+              <p style={{ fontSize: '13px', color: '#9ca3af', lineHeight: 1.5 }}>
+                Screen captures, a full transcript, and a narrative summary that gives you the full picture —
+                connecting what was said and what was shown.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* CTAs */}
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
           {user ? (
             <Link
               href="/dashboard"
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-colors shadow-lg shadow-indigo-500/20"
+              style={{
+                padding: '12px 24px', background: '#4f46e5', color: '#fff',
+                borderRadius: '10px', fontWeight: 600, fontSize: '14px',
+                textDecoration: 'none', transition: 'background 0.15s',
+              }}
             >
-              Go to dashboard
+              Go to dashboard →
             </Link>
           ) : (
             <>
               <Link
                 href="/signup"
-                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-colors shadow-lg shadow-indigo-500/20"
+                style={{
+                  padding: '12px 24px', background: '#4f46e5', color: '#fff',
+                  borderRadius: '10px', fontWeight: 600, fontSize: '14px', textDecoration: 'none',
+                }}
               >
                 Get started free
               </Link>
               <Link
                 href="/login"
-                className="px-6 py-3 bg-white/10 hover:bg-white/15 border border-white/10 text-white text-sm font-semibold rounded-xl transition-colors backdrop-blur-sm"
+                style={{
+                  padding: '12px 24px', background: 'rgba(255,255,255,0.08)', color: '#fff',
+                  borderRadius: '10px', fontWeight: 600, fontSize: '14px', textDecoration: 'none',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                }}
               >
                 Sign in
               </Link>
@@ -68,7 +145,7 @@ export default async function Home() {
           )}
         </div>
 
-        <p className="mt-8 text-xs text-gray-600">
+        <p style={{ marginTop: '24px', fontSize: '11px', color: '#374151' }}>
           Supports MP4, MOV, WEBM · up to 90 min · 2 GB
         </p>
       </div>
