@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 type Stage = 'idle' | 'uploading' | 'triggering' | 'done' | 'error' | 'cap'
 
 const ACCEPTED = '.mp4,.mov,.webm,.mkv'
-const MAX_BYTES = 2 * 1024 * 1024 * 1024  // 2 GB
+const MAX_BYTES = 500 * 1024 * 1024        // 500 MB
 const MAX_DURATION_S = 30 * 60             // 30 min
 const SUPPORTED_TYPES = new Set(['video/mp4', 'video/quicktime', 'video/webm', 'video/x-matroska', 'video/mkv'])
 
@@ -41,7 +41,7 @@ export default function UploadWidget() {
 
     // Size check
     if (file.size > MAX_BYTES) {
-      setErrorMsg('File must be under 2 GB.')
+      setErrorMsg('File must be under 500 MB.')
       setStage('error')
       return
     }
@@ -175,7 +175,7 @@ export default function UploadWidget() {
               </svg>
             </div>
             <p className="text-white font-medium mb-1">Drop a recording here</p>
-            <p className="text-gray-400 text-sm">MP4, MOV, WEBM · max 30 min · max 2 GB</p>
+            <p className="text-gray-400 text-sm">MP4, MOV, WEBM · max 30 min · max 500 MB</p>
           </>
         )}
 
