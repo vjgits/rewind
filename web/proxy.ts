@@ -1,6 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'vijay.suresh11@gmail.com'
+
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -26,13 +28,23 @@ export async function proxy(request: NextRequest) {
   // Refresh session — keeps the user logged in across tab reloads
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Unauthenticated → redirect to login for protected routes
-  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
+  const { pathname } = request.nextUrl
+
+  // Protected routes — unauthenticated users go to login
+  const protectedPrefixes = ['/dashboard', '/analyses', '/admin']
+  if (!user && protectedPrefixes.some(p => pathname.startsWith(p))) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Authenticated → skip auth pages
-  if (user && ['/login', '/signup'].includes(request.nextUrl.pathname)) {
+  // Admin-only routes
+  if (pathname.startsWith('/admin')) {
+    if (user?.email !== ADMIN_EMAIL) {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+  }
+
+  // Authenticated users skip auth pages
+  if (user && ['/login', '/signup'].includes(pathname)) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 

@@ -2,6 +2,10 @@ import { createClient } from '@/utils/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'vijay.suresh11@gmail.com'
+const USER_CAP = 3
+const GLOBAL_CAP = 300
+
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -10,16 +14,29 @@ export async function POST(request: Request) {
   const { filename } = await request.json()
   if (!filename) return NextResponse.json({ error: 'filename required' }, { status: 400 })
 
-  // Global cap — keeps costs bounded during open beta
+  const isAdmin = user.email === ADMIN_EMAIL
+
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
-  const { count } = await admin
-    .from('analyses')
-    .select('*', { count: 'exact', head: true })
-  if ((count ?? 0) >= 100) {
-    return NextResponse.json({ error: 'ANALYSIS_CAP_REACHED' }, { status: 429 })
+
+  if (!isAdmin) {
+    // Per-user cap
+    const { count: userCount } = await supabase
+      .from('analyses')
+      .select('*', { count: 'exact', head: true })
+    if ((userCount ?? 0) >= USER_CAP) {
+      return NextResponse.json({ error: 'USER_CAP_REACHED' }, { status: 429 })
+    }
+
+    // Global cap
+    const { count: globalCount } = await admin
+      .from('analyses')
+      .select('*', { count: 'exact', head: true })
+    if ((globalCount ?? 0) >= GLOBAL_CAP) {
+      return NextResponse.json({ error: 'ANALYSIS_CAP_REACHED' }, { status: 429 })
+    }
   }
 
   const { data: analysis, error: insertError } = await supabase

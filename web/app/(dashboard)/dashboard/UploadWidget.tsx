@@ -72,8 +72,13 @@ export default function UploadWidget() {
       })
       const createJson = await createRes.json()
 
-      if (createRes.status === 429 && createJson.error === 'ANALYSIS_CAP_REACHED') {
-        setStage('cap')
+      if (createRes.status === 429) {
+        if (createJson.error === 'USER_CAP_REACHED') {
+          setErrorMsg('Sorry, you\'ve reached the 3-upload limit for your account.')
+          setStage('error')
+        } else {
+          setStage('cap')
+        }
         return
       }
       if (!createRes.ok) throw new Error(createJson.error ?? 'Failed to create analysis')
