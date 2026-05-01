@@ -60,9 +60,9 @@ def extract_keyframes(video_url: str = "", video_bytes: bytes = b"") -> dict:
         duration_seconds = float(probe.stdout.strip())
         print(f"Video duration: {duration_seconds / 60:.1f} min")
 
-        if duration_seconds > 90 * 60:
+        if duration_seconds > 30 * 60:
             raise ValueError(
-                f"Video is {duration_seconds / 60:.0f} min. Maximum supported length is 90 minutes."
+                f"Video is {duration_seconds / 60:.0f} min. Maximum supported length is 30 minutes."
             )
 
         print("Extracting frames at 1fps...")
@@ -377,6 +377,18 @@ def run_pipeline_job(analysis_id: str, video_url: str):
 
         set_status("complete", summary=summary)
         print(f"Done — analysis {analysis_id} complete.")
+
+        # Delete the original video — keyframes and text are all we need going forward.
+        # Wrapped in its own try/except so a storage error never corrupts a completed result.
+        try:
+            row = sb.table("analyses").select("video_path").eq("id", analysis_id).single().execute()
+            video_path = (row.data or {}).get("video_path")
+            if video_path:
+                sb.storage.from_("videos").remove([video_path])
+                sb.table("analyses").update({"video_path": None}).eq("id", analysis_id).execute()
+                print(f"Deleted video from storage: {video_path}")
+        except Exception as del_err:
+            print(f"Warning: could not delete video from storage: {del_err}")
 
     except Exception as e:
         sb.table("analyses").update({
